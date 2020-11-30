@@ -5,7 +5,12 @@ use actix_web::{get, web::Data, web::Path, web::Payload, Error, HttpResponse, Ht
 use actix_web_actors::ws;
 use uuid::Uuid;
 
-// Route to group
+/// Route to start Ws connection with group
+///
+/// # Arguments
+/// * `req` - Incoming HTTP request, will be upgraded to Websocket request
+/// * `stream` - Stream of data chunks from incoming request, to be passed to Ws
+/// * `srv` - Lobby Actor to connect to, based on group_id of incoming connection
 #[get("/{group_id}")]
 pub async fn start_connection(
     req: HttpRequest,

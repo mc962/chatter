@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 // store Socket as a recipient of Websocket Message
 type Socket = Recipient<WsMessage>;
 
+/// Holds information for user sessions and available 'rooms'
 pub struct Lobby {
     sessions: HashMap<Uuid, Socket>, // match self id to self
     rooms: HashMap<Uuid, HashSet<Uuid>> // match room id to list of users id
@@ -22,6 +23,11 @@ impl Default for Lobby {
 }
 
 impl Lobby {
+    /// Sends a message to a client with a given id
+    ///
+    /// # Arguments
+    /// * `message` - Message data to send to client
+    /// * `id_to` - Unique uuid to identify user session/client to send message to
     fn send_message(&self, message: &str, id_to: &Uuid) {
         // sends message to client with given id, if client exists
         if let Some(socket_recipient) = self.sessions.get(id_to) {
@@ -41,7 +47,13 @@ impl Actor for Lobby {
 impl Handler<Disconnect> for Lobby {
     type Result = ();
 
+    /// Handles disconnecting a client from the held sessions and communicating disconnection
+    ///   with connected sessions
+    ///
+    /// # Arguments
+    /// * `msg` - Message with data to send to client
     fn handle(&mut self, msg: Disconnect, _: &mut Context<Self>) {
+        // take action to disconnect client if it exists
         if self.sessions.remove(&msg.id).is_some() {
             // send client id to self
             let disconnect_data = MessagePayload {
@@ -77,6 +89,10 @@ impl Handler<Disconnect> for Lobby {
 impl Handler<Connect> for Lobby {
     type Result = ();
 
+    /// Handles connecting a client, adding it to a room and connected sessions
+    ///
+    /// # Arguments
+    /// * `msg` - Message with data to send to client
     fn handle(&mut self, msg: Connect, _: &mut Context<Self>) -> Self::Result {
         // create a room if does not exist, and add id for client to it
         self.rooms
@@ -112,6 +128,10 @@ impl Handler<Connect> for Lobby {
 impl Handler<ClientActorMessage> for Lobby {
     type Result = ();
 
+    /// Handles sending a message to connected clients
+    ///
+    /// # Arguments
+    /// * `msg` - Message with data to send to client
     fn handle(&mut self, msg: ClientActorMessage, _: &mut Context<Self>) -> Self::Result {
         let message_data = MessagePayload {
             kind: DataType::Message,

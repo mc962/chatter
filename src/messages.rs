@@ -4,12 +4,12 @@ use serde::{Serialize, Deserialize};
 // derive(Message) indicates that target is an Actor Message
 // rtype(result = "SomeType") indicates that target should have particular return type after message is handled
 
-// WS Connection responds to this message to pipe it through to the actual client
+/// WS Connection responds to this message to pipe it through to the actual client
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct WsMessage(pub String);
 
-// Ws Connection sends this Connect message indicating desire to be connected to Lobby
+/// Ws Connection sends this Connect message indicating desire to be connected to Lobby
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Connect {
@@ -18,7 +18,7 @@ pub struct Connect {
     pub self_id: Uuid
 }
 
-// Ws Connection sends this Connect message indicating desire to be disconnected from Lobby
+/// Ws Connection sends this Connect message indicating desire to be disconnected from Lobby
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct Disconnect {
@@ -26,7 +26,7 @@ pub struct Disconnect {
     pub id: Uuid
 }
 
-// Client sends this Message to the lobby for the lobby to echo out
+/// Client sends this Message to the lobby for the lobby to echo out
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct ClientActorMessage {
@@ -35,12 +35,14 @@ pub struct ClientActorMessage {
     pub room_id: Uuid
 }
 
+/// Payload for Ws message data that may be utilized by client
 #[derive(Serialize, Deserialize)]
 pub struct MessagePayload {
     pub kind: DataType,
     pub content: String
 }
 
+/// Possible types of message payloads that client may take particular actions on
 #[derive(Serialize, Deserialize)]
 pub enum DataType {
     Connect,
