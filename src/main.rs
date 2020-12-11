@@ -24,7 +24,8 @@ async fn main() -> std::io::Result<()> {
     let chat_server = Lobby::default().start();
 
     info!(target: "app", "=> Booting server");
-    info!(target: "app", "=> Starting application version {} in {}", &env!("CARGO_PKG_VERSION"), &environment);
+    info!(target: "app", "=> Starting application version {}", &env!("CARGO_PKG_VERSION"));
+    info!(target: "app", "* Environment: {}", &environment);
 
     // spin up an HTTP server to run app in
     HttpServer::new(move || {
