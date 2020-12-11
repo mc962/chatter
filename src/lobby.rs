@@ -1,23 +1,26 @@
-use crate::messages::{ClientActorMessage, Connect, Disconnect, WsMessage, MessagePayload, DataType};
+use crate::messages::{
+    ClientActorMessage, Connect, DataType, Disconnect, MessagePayload, WsMessage,
+};
 use actix::prelude::{Actor, Context, Handler, Recipient};
+use log::info;
+use serde_json::{json, Value};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
-use serde_json::{json, Value};
 
 // store Socket as a recipient of Websocket Message
 type Socket = Recipient<WsMessage>;
 
 /// Holds information for user sessions and available 'rooms'
 pub struct Lobby {
-    sessions: HashMap<Uuid, Socket>, // match self id to self
-    rooms: HashMap<Uuid, HashSet<Uuid>> // match room id to list of users id
+    sessions: HashMap<Uuid, Socket>,     // match self id to self
+    rooms: HashMap<Uuid, HashSet<Uuid>>, // match room id to list of users id
 }
 
 impl Default for Lobby {
     fn default() -> Lobby {
         Lobby {
             sessions: HashMap::new(),
-            rooms: HashMap::new()
+            rooms: HashMap::new(),
         }
     }
 }
@@ -58,10 +61,9 @@ impl Handler<Disconnect> for Lobby {
             // send client id to self
             let disconnect_data = MessagePayload {
                 kind: DataType::Disconnect,
-                content: msg.id.to_string()
+                content: msg.id.to_string(),
             };
             let payload = Value::to_string(&json!(disconnect_data));
-
 
             // get clients for room, message that particular client will be disconnected
             self.rooms
@@ -76,10 +78,11 @@ impl Handler<Disconnect> for Lobby {
                     //  if there are multiple clients in the lobby for that room, remove that client
                     lobby.remove(&msg.id);
                 } else {
-                    // if there is only 1 client in the room only one in the lobby, remove it entirely
-                    //   to avoid filling up the HashMap
+                    // if there is only 1 client in the room, remove it entirely to avoid filling up the HashMap
                     self.rooms.remove(&msg.room_id);
                 }
+
+                info!("User {} disconnected from room {}", &msg.id, &msg.room_id);
             }
         }
     }
@@ -97,11 +100,12 @@ impl Handler<Connect> for Lobby {
         // create a room if does not exist, and add id for client to it
         self.rooms
             .entry(msg.lobby_id)
-            .or_insert_with(HashSet::new).insert(msg.self_id);
+            .or_insert_with(HashSet::new)
+            .insert(msg.self_id);
 
         let connect_data = MessagePayload {
             kind: DataType::Connect,
-            content: msg.self_id.to_string()
+            content: msg.self_id.to_string(),
         };
         let payload = Value::to_string(&json!(connect_data));
 
@@ -115,10 +119,9 @@ impl Handler<Connect> for Lobby {
             .for_each(|conn_id| self.send_message(&payload, conn_id));
 
         // store client address
-        self.sessions.insert(
-            msg.self_id,
-            msg.addr
-        );
+        self.sessions.insert(msg.self_id, msg.addr);
+
+        info!("User {} connected to room {}", &msg.self_id, &msg.lobby_id);
 
         // send client id to self
         self.send_message(&payload, &msg.self_id);
@@ -135,7 +138,7 @@ impl Handler<ClientActorMessage> for Lobby {
     fn handle(&mut self, msg: ClientActorMessage, _: &mut Context<Self>) -> Self::Result {
         let message_data = MessagePayload {
             kind: DataType::Message,
-            content: msg.msg.to_string()
+            content: msg.msg.to_string(),
         };
 
         let payload = Value::to_string(&json!(message_data));
@@ -147,9 +150,11 @@ impl Handler<ClientActorMessage> for Lobby {
             }
         } else {
             //  if not a whisper, send to all clients in the room
-            self.rooms.get(&msg.room_id).unwrap().iter().for_each(|client|
-                self.send_message(&payload, client
-            ));
+            self.rooms
+                .get(&msg.room_id)
+                .unwrap()
+                .iter()
+                .for_each(|client| self.send_message(&payload, client));
         }
     }
 }

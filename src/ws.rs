@@ -1,7 +1,7 @@
-use actix::{fut, ActorContext};
-use crate::messages::{Disconnect, Connect, WsMessage, ClientActorMessage};
 use crate::lobby::Lobby;
-use actix::{Actor, Addr, Running, StreamHandler, WrapFuture, ActorFuture, ContextFutureSpawner};
+use crate::messages::{ClientActorMessage, Connect, Disconnect, WsMessage};
+use actix::{fut, ActorContext};
+use actix::{Actor, ActorFuture, Addr, ContextFutureSpawner, Running, StreamHandler, WrapFuture};
 use actix::{AsyncContext, Handler};
 use actix_web_actors::ws;
 use actix_web_actors::ws::Message::Text;
@@ -19,7 +19,7 @@ pub struct WsConn {
     // time since last heartbeat was received, helps determine if the socket is still alive
     hb: Instant,
     // id assigned to user(?) by the socket, helps for private messaging
-    id: Uuid
+    id: Uuid,
 }
 
 impl WsConn {
@@ -28,7 +28,7 @@ impl WsConn {
             id: Uuid::new_v4(),
             room,
             hb: Instant::now(),
-            lobby_addr: lobby
+            lobby_addr: lobby,
         }
     }
 
@@ -39,7 +39,10 @@ impl WsConn {
             // if time since last heartbeat exceeds timeout setting, then drop connection
             if Instant::now().duration_since(act.hb) > CLIENT_TIMEOUT {
                 println!("Disconnecting due to failed heartbeat");
-                act.lobby_addr.do_send(Disconnect {id: act.id, room_id: act.room});
+                act.lobby_addr.do_send(Disconnect {
+                    id: act.id,
+                    room_id: act.room,
+                });
                 ctx.stop();
                 return;
             }
@@ -66,14 +69,14 @@ impl Actor for WsConn {
             .send(Connect {
                 addr: addr.recipient(),
                 lobby_id: self.room,
-                self_id: self.id
+                self_id: self.id,
             })
             .into_actor(self)
             // await Connect message, allowing to happen asynchronously
             .then(|res, _, ctx| {
                 match res {
                     Ok(_res) => (),
-                    _ => ctx.stop()
+                    _ => ctx.stop(),
                 }
                 fut::ready(())
             })
@@ -83,7 +86,10 @@ impl Actor for WsConn {
     /// Destroys WS Actor
     fn stopping(&mut self, _: &mut Self::Context) -> Running {
         // Send message to lobby to disconnect from lobby
-        self.lobby_addr.do_send(Disconnect {id: self.id, room_id: self.room});
+        self.lobby_addr.do_send(Disconnect {
+            id: self.id,
+            room_id: self.room,
+        });
         // Stop Actor, even if Disconnect message was not received
         Running::Stop
     }
@@ -121,14 +127,13 @@ impl StreamHandler<Result<ws::Message, ws::ProtocolError>> for WsConn {
             Ok(ws::Message::Nop) => (),
             // If incoming message is text (most likely message),
             //   send it to the lobby so that it may handle the message
-            Ok(Text(s)) =>
-                self.lobby_addr.do_send(ClientActorMessage {
-                    id: self.id,
-                    msg: s,
-                    room_id: self.room
-                }),
+            Ok(Text(s)) => self.lobby_addr.do_send(ClientActorMessage {
+                id: self.id,
+                msg: s,
+                room_id: self.room,
+            }),
             // On error, panic (TODO handle this better)
-            Err(e) => panic!(e)
+            Err(e) => panic!(e),
         }
 
         impl Handler<WsMessage> for WsConn {

@@ -1,6 +1,6 @@
 use actix::prelude::{Message, Recipient};
+use serde::{Deserialize, Serialize};
 use uuid::Uuid;
-use serde::{Serialize, Deserialize};
 // derive(Message) indicates that target is an Actor Message
 // rtype(result = "SomeType") indicates that target should have particular return type after message is handled
 
@@ -15,7 +15,7 @@ pub struct WsMessage(pub String);
 pub struct Connect {
     pub addr: Recipient<WsMessage>,
     pub lobby_id: Uuid,
-    pub self_id: Uuid
+    pub self_id: Uuid,
 }
 
 /// Ws Connection sends this Connect message indicating desire to be disconnected from Lobby
@@ -23,7 +23,7 @@ pub struct Connect {
 #[rtype(result = "()")]
 pub struct Disconnect {
     pub room_id: Uuid,
-    pub id: Uuid
+    pub id: Uuid,
 }
 
 /// Client sends this Message to the lobby for the lobby to echo out
@@ -32,14 +32,14 @@ pub struct Disconnect {
 pub struct ClientActorMessage {
     pub id: Uuid,
     pub msg: String,
-    pub room_id: Uuid
+    pub room_id: Uuid,
 }
 
 /// Payload for Ws message data that may be utilized by client
 #[derive(Serialize, Deserialize)]
 pub struct MessagePayload {
     pub kind: DataType,
-    pub content: String
+    pub content: String,
 }
 
 /// Possible types of message payloads that client may take particular actions on
@@ -47,5 +47,5 @@ pub struct MessagePayload {
 pub enum DataType {
     Connect,
     Message,
-    Disconnect
+    Disconnect,
 }
